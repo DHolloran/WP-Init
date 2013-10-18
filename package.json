@@ -1,0 +1,19 @@
+{
+  "name": "wp-install-npm",
+  "version": "0.0.0",
+  "description": "ERROR: No README data found!",
+  "main": "index.js",
+  "dependencies": {
+    "colors": "~0.6.2",
+    "exec-sync": "~0.1.6",
+    "gift": "~0.1.0",
+    "mysql": "~2.0.0-alpha9",
+    "open": "~0.0.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "BSD-2-Clause"
+}
