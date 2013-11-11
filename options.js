@@ -1,4 +1,5 @@
 var colors = require('colors');
+var fs = require('fs');
 colors.setTheme({
 	silly: 'rainbow',
 	prompt: 'grey',
@@ -10,8 +11,25 @@ colors.setTheme({
 	error: 'red'
 });
 
-// var options = require('./option-values.js');
-var options = require('./dev-option-values.js');
+// Default options
+var options = require('./default-options.js');
+
+// Set options file path option using --option=
+process.argv.forEach(function (val) {
+	if ( val.indexOf('--options=') !== -1) {
+		var optionsUrl = val.replace('--options=','');
+		if ( fs.existsSync( optionsUrl ) ) {
+			options = require( optionsUrl );
+		} // if()
+	} // if()
+});
+
+// Set the debug options if --debug is passed in
+process.argv.forEach(function (val) {
+	if ( val === '--debug' ) {
+		options = require('./debug-options.js');
+	} // if()
+});
 
 options.values = function() {
 	var site              = options.site,
@@ -29,8 +47,8 @@ options.values = function() {
 	;
 
 	msg = nl + nl + 'Your Responses:' + nl +
-	'- Install Directory: ' + site.installDirectory + nl +
-	'- Directory Name: ' + site.directoryName + nl +
+	'- Site Install Directory: ' + site.installDirectory + nl +
+	'- Site Directory Name: ' + site.directoryName + nl +
 	'- Site URL: ' + site.url + nl +
 	'- Site Title: ' + site.title + nl +
 	options.spacer + nl +
@@ -142,23 +160,25 @@ options.site.callback = function( callback ) {
 	var site = options.site;
 
 	// Install Directory
-	options.ask('Install Directory', site.installDirectory, function( option ){
+	options.ask('Site Install Directory', site.installDirectory, function( option ){
 		if ( option !== '' ) { site.installDirectory = option; }
-		// Directory Name
-		options.ask('Directory Name', site.directoryName, function( option ){
-			if ( option !== '' ) { site.directoryName = option; }
-			// Site URL
-			options.ask('Site URl', site.url, function( option ){
-				if ( option !== '' ) { site.url = option; }
+		// Site URL
+		options.ask('Site URl', site.url, function( option ){
+			if ( option !== '' ) { site.url = option; }
 
-				// Site Title
-				options.ask('Site Title', site.title, function( option ){
-					if ( option !== '' ) { site.title = option; }
+			// Site Title
+			options.ask('Site Title', site.title, function( option ){
+				if ( option !== '' ) { site.title = option; }
+
+				// Directory Name
+				site.directoryName = site.title.replace(/\W/g, '-').toLowerCase().replace('undefined','').replace('--');
+				options.ask('Site Directory Name', site.directoryName, function( option ){
+					if ( option !== '' ) { site.directoryName = option; }
 
 					options.callback( callback );
-				}); // options.ask('Site Title')
-			}); // options.ask('Site URl')
-		}); // options.ask('Directory Name')
+				}); // options.ask('Directory Name')
+			}); // options.ask('Site Title')
+		}); // options.ask('Site URl')
 	}); // options.ask('Install Directory')
 };
 
@@ -167,6 +187,7 @@ options.db.callback = function( callback ) {
 	var db = options.db;
 
 	// Database Name
+	db.name = 'wp_' + options.site.title.replace(/\W/g, '_').toLowerCase().replace('__');
 	options.ask( 'Database Name', db.name, function( option ){
 		if ( option !== '' ) { db.name = option; }
 
@@ -208,23 +229,18 @@ options.theme.callback = function( callback ) {
 		if ( theme.installTheme ) {
 
 			// Theme Name
-			options.ask( 'Theme Name', site.title, function( option ) {
-				if ( option === '' ) {
-					theme.name = site.title;
-				} else {
-					theme.name = option;
-				} // if()
+			theme.name = site.title;
+			options.ask( 'Theme Name', theme.name, function( option ) {
+				if ( option !== '' ) { theme.name = option; }
 
-				if ( option !== '' ) {
-					theme.name = option;
-					theme.slug = theme.name.replace(/\W/g, '-').toLowerCase().replace('--');
-				} // if()
+				theme.slug = options.site.directoryName;
 
 				// Theme URI
 				options.ask( 'Theme URI', theme.uri, function( option ) {
 					if ( option !== '' ) { theme.uri = option; }
 
 					// Theme Description
+					theme.description = 'Custom theme: ' + theme.name;
 					options.ask( 'Theme Description', theme.description, function( option ) {
 						if ( option !== '' ) { theme.description = option; }
 
@@ -240,14 +256,14 @@ options.theme.callback = function( callback ) {
 								options.ask( 'Theme Author URI', theme.authorUri, function( option ) {
 									if ( option !== '' ) { theme.authorUri = option; }
 
-									// Theme License
-									options.ask( 'Theme License', theme.license, function( option ) {
-										if ( option !== '' ) { theme.license = option; }
+									if ( typeof callback !== 'undefined' ) {
+										callback();
+									} // if()
 
-										if ( typeof callback !== 'undefined' ) {
-											callback();
-										} // if()
-									}); // options.ask('Theme License')
+									// Theme License
+									// options.ask( 'Theme License', theme.license, function( option ) {
+									// 	if ( option !== '' ) { theme.license = option; }
+									// }); // options.ask('Theme License')
 								}); // options.ask('Theme Author URI')
 							}); // options.ask('Theme Author')
 						}); // options.ask('Theme Version')
@@ -309,9 +325,10 @@ options.grunt.callback = function( callback ) {
 				if ( packageJSON.create ) {
 					// Name
 					var defaultValue = ( theme.name === site.title ) ? theme.name : site.title;
+					defaultValue = defaultValue.replace(/\W/g, '-').toLowerCase().replace('--');
 					options.ask( ' name', defaultValue, function( option ) {
 						if ( option === '' ) {
-							packageJSON.name = defaultValue;
+							packageJSON.name = defaultValue.replace(/\W/g, '-').toLowerCase().replace('--');
 						} else {
 							packageJSON.name = option;
 						} // if/else()
