@@ -12,7 +12,7 @@ var options = {
 		name   : '',
 		user   : 'root',
 		pass   : 'root',
-		prefix : 'wp_', // $((RANDOM%123456+999999)) # Gets a random number between 123456 and 999999
+		prefix : 'wp_', // Random 'wp'+Math.random().toString(36).substring(10)+'_'
 		host   : '127.0.0.1'
 	},
 	theme: {
@@ -28,7 +28,7 @@ var options = {
 	},
 	admin : {
 		name     : 'matchbox',
-		password : '',
+		password : 'dev',
 		email    : 'info@sitename.com',
 	},
 	githubTheme : {
@@ -49,15 +49,15 @@ var options = {
 		useGrunt: true,
 		packageJSON : {
 			create: true,
-			name: '',
-			version: '',
-			description: '',
-			entryPoint: 'index.php',
-			testCommand: '',
-			gitRepository: '',
-			keywords: '',
-			author  : '',
-			license: ''
+			name          : '',
+			version       : '',
+			description   : '',
+			entryPoint    : 'base.php',
+			testCommand   : 'test',
+			gitRepository : '',
+			keywords      : 'WordPress Theme',
+			author        : 'Matchbox Design Group',
+			license       : 'GNU General Public License v2 or later'
 		},
 	}
 };
