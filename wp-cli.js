@@ -1,9 +1,11 @@
-var fs = require('fs');
-var execSync = require('exec-sync');
-var git = require('gift');
-var util = require('util');
+var fs       = require('fs'),
+		execSync = require('exec-sync'),
+		git      = require('gift'),
+		util     = require('util'),
+		options  = require('./options.js'),
+		colors = require('colors')
+;
 
-var colors = require('colors');
 colors.setTheme({
 	prompt: 'grey',
 	success: 'green',
@@ -15,8 +17,6 @@ colors.setTheme({
 });
 
 var wpcli = {
-	options       : require('./options.js'),
-	exec          : require('child_process').exec,
 	isInstalled   : false,
 	version       : undefined,
 	wpIsInstalled : undefined
@@ -41,14 +41,14 @@ wpcli.checkIsInstalled = function() {
 
 	if ( isWin ) {
 		errorMsg = "Sorry, this will not work on a Windows box since a UNIX\n environment is required for WP CLI. \n";
-		util.puts(errorMsg);
+		util.puts( errorMsg.error );
 	} else if ( !isInstalled ) {
 		errorMsg = "WP CLI is not installed please visit http://wp-cli.org/ for installation information. \n";
-		util.puts(errorMsg);
-		util.puts(error);
+		util.puts( errorMsg.error );
+		util.puts( error.error );
 	} else {
 		wpcli.isInstalled = isInstalled;
-		wpcli.options.init();
+		options.init();
 	} // if/elseif/else()
 
 	return false;
@@ -98,7 +98,7 @@ wpcli.mkdirSync = function( directory ) {
  *
  * @param Function callback Function to execute after wp is installed check has completed.
  *
- * @return boolean false
+ * @return Function          Callback to be executed
  */
 wpcli.checkWpIsInstalled = function( callback ) {
 	var error = execSync("wp core is-installed",true);
@@ -116,11 +116,14 @@ wpcli.checkWpIsInstalled = function( callback ) {
  * @todo Add install progress notification
  * @todo Add overwrite flag
  *
- * @return boolean false
+ * @param  Function callback Callback to be executed
+ *
+ * @return Function          Callback to be executed
  */
 wpcli.installWordPress = function( callback ) {
-	var options          = wpcli.options,
-			installDirectory = options.site.installDirectory,
+	util.puts(options.spacer);
+
+	var installDirectory = options.site.installDirectory,
 			directoryName    = options.site.directoryName,
 			siteDirectory    = installDirectory + '/' + directoryName
 	;
@@ -187,14 +190,14 @@ wpcli.installWordPress = function( callback ) {
 /**
  * Adds and fills out WordPress wp-config.php file
  *
- * @todo Figure out why this doesn't work correctly
- * @todo Fix config already exists checking
+ * @param  Function callback Callback to be executed
  *
- * @return boolean false
+ * @return Function          Callback to be executed
  */
 wpcli.addWpConfig = function( callback ) {
+	util.puts(options.spacer);
 	util.puts( 'Creating wp-config.php...' );
-	var db = wpcli.options.db;
+	var db = options.db;
 	var initWpConfig = 'wp core config ' +
 	'--dbname=' + db.name + ' ' +
 	'--dbuser=' + db.user + ' ' +
@@ -223,12 +226,15 @@ wpcli.addWpConfig = function( callback ) {
 /**
  * Adds a MySQL database for the WordPress install
  *
- * @return boolean false
+ * @param  Function callback Callback to be executed
+ *
+ * @return Function          Callback to be executed
  */
 wpcli.addDatabase = function( callback ) {
+	util.puts(options.spacer);
 	util.puts( 'Creating database...' );
 	var mysql      = require('mysql');
-	var db         = wpcli.options.db;
+	var db         = options.db;
 	var connection = mysql.createConnection({
 		host     : db.host,
 		user     : db.user,
@@ -241,7 +247,7 @@ wpcli.addDatabase = function( callback ) {
 			console.error( errorMsg.error );
 			process.exit();
 		} else {
-			util.puts( 'Database created...' );
+			util.puts( 'Database created!'.success );
 			wpcli.callback( callback );
 		} // if/else()
 	});
@@ -254,21 +260,22 @@ wpcli.addDatabase = function( callback ) {
 /**
  * Runs the WordPress database install
  *
- * @todo use wp core install it was having some issues with MAMP
+ * @param  Function callback Callback to be executed
  *
- * @return boolean false
+ * @return Function          Callback to be executed
  */
 wpcli.databaseInstall = function( callback ) {
-		var site = wpcli.options.site,
-				admin = wpcli.options.admin
-		;
-	var coreInstall = 'wp core install ' +
-	'--url=' + site.url + ' ' +
-	'--title=' + site.title + ' ' +
-	'--admin_name=' + admin.name + ' ' +
-	'--admin_password=' + admin.password + ' ' +
-	'--admin_email=' + admin.email + ' ';
-	util.puts( 'Installing WordPress database tables...' );
+	util.puts(options.spacer);
+	var site = options.site,
+			admin = options.admin,
+			coreInstall = 'wp core install ' +
+			'--url=' + site.url + ' ' +
+			'--title=' + site.title + ' ' +
+			'--admin_name=' + admin.name + ' ' +
+			'--admin_password=' + admin.password + ' ' +
+			'--admin_email=' + admin.email + ' ';
+			util.puts( 'Installing WordPress database tables...' )
+	;
 
 	var error = execSync(coreInstall,true);
 	var wpAlreadyInstalled = ( error.stdout.toLowerCase().indexOf('already installed') === -1 );
@@ -290,6 +297,15 @@ wpcli.databaseInstall = function( callback ) {
 };
 
 
+
+/**
+ * Handles the execSync output to stdout
+ *
+ * @param  string stdout Output received from execSync() to stdout
+ * @param  string stderr Output received from execSync() to stderr
+ *
+ * @return Void
+ */
 wpcli.execOutput = function( stdout, stderr ) {
 	if ( stdout !== '' ) {
 		var successMsg = 'Success: '+stdout;
@@ -302,6 +318,7 @@ wpcli.execOutput = function( stdout, stderr ) {
 };
 
 
+
 /**
  * Installs some suggested development plugins
  *
@@ -310,39 +327,50 @@ wpcli.execOutput = function( stdout, stderr ) {
  * @todo Look into a way to install and activate gravity forms and other plugins not in the directory
  * @todo Add option to totally disable
  *
- * @return {[type]} [description]
+ * @param  Function callback Callback to be executed
+ *
+ * @return Function          Callback to be executed
  */
 wpcli.installPlugins = function(callback) {
+	util.puts(options.spacer);
+
 	var execResponse;
 	util.puts( 'Installing Plugins...' );
 
 	// Regenerate Thumbnails
 	execResponse = execSync( 'wp plugin install regenerate-thumbnails --activate', true);
 	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
+	util.puts( options.spacer );
 
 	// Database Reset
 	execResponse = execSync( 'wp plugin install wordpress-database-reset', true);
 	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
+	util.puts( options.spacer );
 
 	// Debug Bar
 	execResponse = execSync( 'wp plugin install debug-bar --activate' ,true);
 	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
+	util.puts( options.spacer );
 
 	// Debug Bar Console
 	execResponse = execSync( 'wp plugin install debug-bar-console --activate' ,true);
 	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
+	util.puts( options.spacer );
 
 	// Theme Check
 	execResponse = execSync( 'wp plugin install theme-check --activate' ,true);
 	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
+	util.puts( options.spacer );
 
 	// WordPress Importer
 	execResponse = execSync( 'wp plugin install wordpress-importer --activate', true);
 	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
+	util.puts( options.spacer );
 
 	// Developer
 	execResponse = execSync( 'wp plugin install developer --activate', true);
 	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
+	util.puts( options.spacer );
 
 	wpcli.callback( callback );
 };
@@ -352,13 +380,23 @@ wpcli.installPlugins = function(callback) {
 /**
  * Un-installs default plugins
  *
- * @return boolean false
+ * @param  Function callback Callback to be executed
+ *
+ * @return Function          Callback to be executed
  */
 wpcli.uninstallPlugins = function( callback ) {
-	var uninstallHello   = wpcli.options.plugins.uninstall.hello,
-			uninstallAkismet = wpcli.options.plugins.uninstall.akismet,
+	if ( !uninstallHello && !uninstallAkismet ){
+		wpcli.callback( callback );
+		return;
+	} // if()
+
+	util.puts(options.spacer);
+
+	var uninstallHello   = options.plugins.uninstall.hello,
+			uninstallAkismet = options.plugins.uninstall.akismet,
 			execResponse
 	;
+
 	// Uninstall Hello World
 	if ( uninstallHello ) {
 		util.puts( 'Uninstalling Hello World...' );
@@ -383,16 +421,19 @@ wpcli.uninstallPlugins = function( callback ) {
 /**
  * Installs WordPress theme from external source
  *
- * @return boolean false
+ * @param  Function callback Callback to be executed
+ *
+ * @return Function          Callback to be executed
  */
 wpcli.installTheme = function( callback ) {
-	if ( !wpcli.options.theme.installTheme ) {
+	if ( !options.theme.installTheme ) {
 		wpcli.callback( callback );
 		return;
 	} // if()
 
-	var options          = wpcli.options,
-			theme            = options.theme,
+	util.puts(options.spacer);
+
+	var theme            = options.theme,
 			github           = options.githubTheme,
 			installDirectory = options.site.installDirectory,
 			directoryName    = options.site.directoryName,
@@ -414,8 +455,9 @@ wpcli.installTheme = function( callback ) {
 	} // try/catch()
 
 	// Clone Repository
-	util.puts( 'Cloning '+github.gitRemote+' to /wp-content/themes/'+themeSlug+'...' );
-	git.clone( github.gitRemote, themeDirectory, function(error, repo) {
+	var cloningMsg = 'Cloning '+github.gitRemote+' to /wp-content/themes/'+themeSlug+'...';
+	util.puts( cloningMsg );
+	git.clone( github.gitRemote, themeDirectory, function(error) {
 		var alreadyExists;
 		if ( error !== null ) {
 			alreadyExists = ( error.toString().toLowerCase().indexOf('already exists') !== -1 );
@@ -461,17 +503,21 @@ wpcli.installTheme = function( callback ) {
  *
  * @todo Make this work on an empty file
  * @todo License information
+ * @todo Add option to disable
  *
- * @return boolean false
+ * @param  Function callback Callback to be executed
+ *
+ * @return Function          Callback to be executed
  */
 wpcli.themeStyleSheet = function( callback ) {
-	if ( !wpcli.options.theme.installTheme ) {
+	if ( !options.theme.installTheme ) {
 		wpcli.callback( callback );
 		return;
 	} // if()
 
-	var options          = wpcli.options,
-			theme            = options.theme,
+	util.puts(options.spacer);
+
+	var theme            = options.theme,
 			installDirectory = options.site.installDirectory,
 			directoryName    = options.site.directoryName,
 			siteDirectory    = installDirectory + '/' + directoryName,
@@ -494,7 +540,7 @@ wpcli.themeStyleSheet = function( callback ) {
 	var linesFound     = 0;
 	if ( styleCSSExists ) {
 		util.puts( 'Writing theme information to style.css...');
-		var styleCssLines = fs.readFileSync(styleCSS).toString().split("\n");
+		var styleCssLines = fs.readFileSync(styleCSS).toString().split(options.spacer);
 		for(var i in styleCssLines) {
 			var line = styleCssLines[i];
 
@@ -534,7 +580,7 @@ wpcli.themeStyleSheet = function( callback ) {
 				linesFound = linesFound + 1;
 			} // if()
 
-			styleCssLines[i] = styleCssLines[i] + "\n";
+			styleCssLines[i] = styleCssLines[i] + options.spacer;
 		} // for()
 
 		fs.writeFileSync( styleCSS, styleCssLines.join('') );
@@ -552,22 +598,23 @@ wpcli.themeStyleSheet = function( callback ) {
 };
 
 
+
 /**
  * Activates the WordPress theme
  *
- * @param  Function callback
+ * @param  Function callback Callback to be executed
  *
- * @return function            callback
+ * @return Function          Callback to be executed
  */
 wpcli.activateTheme = function( callback ) {
-	if ( !wpcli.options.theme.installTheme ) {
+	if ( !options.theme.installTheme ) {
 		wpcli.callback( callback );
 		return;
 	} // if()
 
-	var options          = wpcli.options,
-			theme            = options.theme
-	;
+	util.puts(options.spacer);
+
+	var theme = options.theme;
 
 	// Activate Theme
 	util.puts( 'Activating theme...');
@@ -578,71 +625,93 @@ wpcli.activateTheme = function( callback ) {
 };
 
 
+
 /**
  * Initializes an empty git repository
  *
  * @todo add options to option.js for this method
+ * @todo setup method
  *
- * @return {[type]} [description]
+ * @param  Function callback Callback to be executed
+ *
+ * @return Function          Callback to be executed
  */
 wpcli.initGit = function() {
-
 };
 
 
+
+/**
+ * Retrieves the dependencies for Grunt.js
+ *
+ * @todo make this dynamic by reading Grunfile.js
+ *
+ * @return string Dependencies for Grunt.js
+ */
 wpcli.getGruntDevDependencies = function() {
-	var options          = wpcli.options,
-			theme            = options.theme,
-			installDirectory = options.site.installDirectory,
-			directoryName    = options.site.directoryName,
-			siteDirectory    = installDirectory + '/' + directoryName,
-			themesDirectory  = siteDirectory + '/wp-content/themes/',
-			themeSlug        = theme.slug,
-			themeDirectory   = themesDirectory+themeSlug+'/',
-			gruntJsFile      = themeDirectory+'Gruntfile.js'
-	;
-	if ( !fs.existsSync( gruntJsFile ) ) {
-		return '{}';
-	}
+	return '{\n' +
+	'    "grunt": "~0.4.1",\n' +
+	'    "grunt-contrib-sass": "~0.5.0",\n' +
+	'    "grunt-contrib-watch": "~0.5.3",\n' +
+	'    "grunt-contrib-uglify": "~0.2.4",\n' +
+	'    "grunt-notify": "~0.2.13",\n' +
+	'    "grunt-contrib-jshint": "~0.6.4"\n' +
+	'  }';
+	// var theme            = options.theme,
+	//		installDirectory = options.site.installDirectory,
+	//		directoryName    = options.site.directoryName,
+	//		siteDirectory    = installDirectory + '/' + directoryName,
+	//		themesDirectory  = siteDirectory + '/wp-content/themes/',
+	//		themeSlug        = theme.slug,
+	//		themeDirectory   = themesDirectory+themeSlug+'/',
+	//		gruntJsFile      = themeDirectory+'Gruntfile.js'
+	// ;
+	// if ( !fs.existsSync( gruntJsFile ) ) {
+	//	return '{}';
+	// }
 
-	var GruntJsLines = fs.readFileSync(gruntJsFile).toString().split("\n");
-	var devDependencies = '{\n';
-	for(var i in GruntJsLines) {
-		var line = GruntJsLines[i];
-		console.log(line);
-		if ( line.indexOf('grunt.loadNpmTasks') !== -1 ) {
-			line.remove(' ');
-			line.remove('grunt.loadNpmTasks(');
-			line.remove(');');
-			devDependencies = devDependencies + '\n' + line.trim();
-		}
-	} // for()
-	devDependencies = devDependencies + '}';
-	console.log(devDependencies);
+	// var GruntJsLines = fs.readFileSync(gruntJsFile).toString().split(options.spacer);
+	// var devDependencies = '{\n';
+	// for(var i in GruntJsLines) {
+	//	var line = GruntJsLines[i];
+	//	console.log(line);
+	//	if ( line.indexOf('grunt.loadNpmTasks') !== -1 ) {
+	//		line.remove(' ');
+	//		line.remove('grunt.loadNpmTasks(');
+	//		line.remove(');');
+	//		devDependencies = devDependencies + '\n' + line.trim();
+	//	}
+	// } // for()
+	// devDependencies = devDependencies + '}';
+	// console.log(devDependencies);
 };
+
 
 
 /**
  * Create package.json just like npm init
  *
- * @return {[type]} [description]
+ * @param  Function callback Callback to be executed
+ *
+ * @return Function          Callback to be executed
  */
 wpcli.packageJSON = function( callback ) {
-	if ( !wpcli.options.grunt.useGrunt || !wpcli.options.grunt.packageJSON.create ) {
+	if ( !options.grunt.useGrunt || !options.grunt.packageJSON.create ) {
 		wpcli.callback( callback );
 		return;
 	} // if()
 
+	util.puts(options.spacer);
+
 	util.puts('Creating package.json...');
-	var options          = wpcli.options,
-			theme            = options.theme,
+	var theme            = options.theme,
 			installDirectory = options.site.installDirectory,
 			directoryName    = options.site.directoryName,
 			siteDirectory    = installDirectory + '/' + directoryName,
 			themesDirectory  = siteDirectory + '/wp-content/themes/',
 			themeSlug        = theme.slug,
 			themeDirectory   = themesDirectory+themeSlug+'/',
-			nl               = "\n",
+			nl               = options.spacer,
 			grunt            = options.grunt,
 			packageJSON      = grunt.packageJSON
 	;
@@ -657,80 +726,102 @@ wpcli.packageJSON = function( callback ) {
 	} // try/catch()
 
 	var packageJSONContent = '{' + nl +
-				' "name": "' + packageJSON.name + '",' + nl +
-				' "version": "' + packageJSON.version + '",' + nl +
-				' "description": "' + packageJSON.desciption + '",' + nl +
-				' "main": "' + packageJSON.entryPoint + '",' + nl +
-				' "devDependencies": ' + wpcli.getGruntDevDependencies() + ',' + nl +
-				' "scripts": {' + nl +
+				'  "name": "' + packageJSON.name + '",' + nl +
+				'  "version": "' + packageJSON.version + '",' + nl +
+				'  "description": "' + packageJSON.desciption + '",' + nl +
+				'  "main": "' + packageJSON.entryPoint + '",' + nl +
+				'  "devDependencies": ' + wpcli.getGruntDevDependencies() + ',' + nl +
+				'  "scripts": {' + nl +
 					'  "test": "' + packageJSON.testCommand + '"' + nl +
-				' },' + nl +
-				' "author": "' + packageJSON.author + '",' + nl +
-				' "license": "' + packageJSON.license + '"' + nl +
+				'  },' + nl +
+				'  "author": "' + packageJSON.author + '",' + nl +
+				'  "license": "' + packageJSON.license + '"' + nl +
 			'}'
 	;
 	fs.writeFileSync( themeDirectory+'package.json', packageJSONContent);
-// "underscore": "*"
 	util.puts('Success: package.json created!'.success);
-	util.puts('Warning: You may want to check your devDependencies for correct version number'.warn);
+	// util.puts('Warning: You may want to check your devDependencies for correct version number'.warn);
+
+	// Install Grunt Plugins
+	util.puts('Installing Grunt.js plugins...');
+	var npmInitResponse = execSync('npm install', true);
+	util.puts( npmInitResponse.stderr );
+	util.puts( 'Grunt.js plugins installed!'.success );
+
+	wpcli.callback( callback );
+
+	return false;
 };
 
 
 
 /**
- * Initialize/Setup Grunt Task runner
- * Grunt Info: http://gruntjs.com/
+ * Runs anything that should happen once complete
  *
- * @return {[type]} [description]
+ * @todo Open up terminal and grunt watch
+ * @todo Open up editor
+ * @todo Open up browser
+ *
+ * @return boolean false
  */
-wpcli.initGrunt = function() {
-// npm install
+wpcli.complete = function() {
+	var site  = options.site,
+			theme = options.theme
+	;
+
+	util.puts( options.spacer );
+	if ( theme.installTheme ) {
+		util.puts( 'You may want to add a shortcut to your them in your .bashrc or .zshrc'.warn );
+		var aliasMsg = 'alias '+theme.slug+'="'+site.installDirectory+'/wp-content/themes/'+theme.slug+'"\n';
+		util.puts( aliasMsg.warn );
+	} // if()
+
+	util.puts( 'Looks like we are ready to go!'.success );
+	process.exit();
+
+	// setTimeout(function(){
+	// var browserMsg = 'Now opening '+options.site.url+' in your default browser...';
+	//	util.puts( broswerMsg.success );
+	//	var open = require("open");
+	//	open(options.site.url);
+	// }, 500);
+
+	return false;
 };
 
 
-wpcli.openBrowser = function() {};
 
 /**
  * Starts the setup
- *
+ * Callback Hell!!!!
  *
  *
  * @return boolean false
  */
 wpcli.startSetup = function( options ) {
-	wpcli.options = options;
-	util.puts(options.spacer);
-	wpcli.installWordPress(function(){
-		util.puts(options.spacer);
-		wpcli.addWpConfig(function(){
-			util.puts(options.spacer);
-			wpcli.addDatabase(function(){
-				util.puts(options.spacer);
-				wpcli.databaseInstall(function(){
-					util.puts(options.spacer);
-					wpcli.installPlugins(function(){
-						util.puts(options.spacer);
-						wpcli.uninstallPlugins(function(){
-							util.puts(options.spacer);
-							wpcli.installTheme(function(){
-								util.puts(options.spacer);
-								wpcli.themeStyleSheet(function(){
-									util.puts(options.spacer);
-									wpcli.activateTheme(function(){
-										util.puts(options.spacer);
-										wpcli.packageJSON(function(){
-
-										});
-									});
-								});
-							});
-						});
-					});
-				});
-			});
-		});
-	});
-};
+	options = options;
+	wpcli.installWordPress(function() {
+		wpcli.addWpConfig(function() {
+			wpcli.addDatabase(function() {
+				wpcli.databaseInstall(function() {
+					wpcli.installPlugins(function() {
+						wpcli.uninstallPlugins(function() {
+							wpcli.installTheme(function() {
+								wpcli.themeStyleSheet(function() {
+									wpcli.activateTheme(function() {
+										wpcli.packageJSON(function() {
+											wpcli.complete();
+										}); // wpcli.packageJSON()
+									}); // wpcli.activateTheme()
+								}); // wpcli.themeStyleSheet()
+							}); // wpcli.installTheme()
+						}); // wpcli.uninstallPlugins()
+					}); // wpcli.installPlugins()
+				}); // wpcli.databaseInstall()
+			}); // wpcli.addDatabase()
+		}); // wpcli.addWpConfig()
+	}); // wpcli.installWordPress()
+}; // wpcli.startSetup()
 
 
 
