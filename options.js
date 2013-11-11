@@ -1,5 +1,7 @@
 var colors = require('colors');
-var fs = require('fs');
+var fs     = require('fs');
+var util   = require('util');
+
 colors.setTheme({
 	silly: 'rainbow',
 	prompt: 'grey',
@@ -479,11 +481,56 @@ options.finalOptions = function() {
 
 
 /**
+ * Handles adding default options template if --options exists.
+ *
+ * @return boolean To output the default options or not.
+ */
+options.outputDefaultOptionsFile = function() {
+	var outputDefaults = false;
+	process.argv.forEach(function (val) {
+		if ( val.indexOf('--options') !== -1) {
+			var optionsUrl = val.replace('--options','');
+			if ( optionsUrl === '' ) {
+				var home               = process.env['HOME'];
+				var defaultOptionsPath = home+'/wp-init/default-options.js';
+				if ( fs.existsSync(defaultOptionsPath) ) {
+					outputDefaults = true;
+					var defaultOptions    = fs.readFileSync(defaultOptionsPath).toString();
+					var customOptionsFile = process.cwd()+'/wp-init-custom-options.js';
+
+					var outputMsg = 'Use the file created at '+
+													customOptionsFile +
+													' to add your new options.\n' +
+													'I would suggest moving the file to a /bin folder or your users root folder so it can be re-used.'+
+													'To use a custom option file use wp-init --options=/full/path/to/wp-init-custom-options.js'
+					;
+					fs.writeFileSync(customOptionsFile, defaultOptions);
+
+					util.puts( outputMsg.success );
+					process.exit();
+				} // if()
+
+				// In case something goes wrong.
+				console.error("I'm sorry something went wrong I could not retrieve the default options.".error);
+				process.exit();
+			} // if()
+		} // if()
+	});
+
+	return outputDefaults;
+};
+
+
+
+/**
  * Initializes option retrieval
  *
  * @return boolean false
  */
 options.init = function() {
+	// Handles adding default options template if --options exists.
+	options.outputDefaultOptionsFile();
+
 	var nl = "\n";
 	// options.util.puts( nl );
 	options.util.puts( 'Configuration Options:' + nl +'Use ^C to exit at any time.' + nl );
