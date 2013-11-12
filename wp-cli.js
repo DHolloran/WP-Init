@@ -3,7 +3,8 @@ var fs       = require('fs'),
 		git      = require('gift'),
 		util     = require('util'),
 		options  = require('./options.js'),
-		colors = require('colors')
+		colors   = require('colors'),
+		_        = require('underscore')
 ;
 
 colors.setTheme({
@@ -336,41 +337,23 @@ wpcli.installPlugins = function(callback) {
 
 	var execResponse;
 	util.puts( 'Installing Plugins...' );
-
-	// Regenerate Thumbnails
-	execResponse = execSync( 'wp plugin install regenerate-thumbnails --activate', true);
-	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
 	util.puts( options.spacer );
 
-	// Database Reset
-	execResponse = execSync( 'wp plugin install wordpress-database-reset', true);
-	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
-	util.puts( options.spacer );
+	var plugins       = options.plugins.install;
+	_.each(plugins, function (value) {
+		var slug     = value.slug;
+		var activate = value.activate;
+		if (typeof slug !== 'undefined') {
+			var pluginInstall = 'wp plugin install ' + value.slug;
 
-	// Debug Bar
-	execResponse = execSync( 'wp plugin install debug-bar --activate' ,true);
-	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
-	util.puts( options.spacer );
-
-	// Debug Bar Console
-	execResponse = execSync( 'wp plugin install debug-bar-console --activate' ,true);
-	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
-	util.puts( options.spacer );
-
-	// Theme Check
-	execResponse = execSync( 'wp plugin install theme-check --activate' ,true);
-	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
-	util.puts( options.spacer );
-
-	// WordPress Importer
-	execResponse = execSync( 'wp plugin install wordpress-importer --activate', true);
-	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
-	util.puts( options.spacer );
-
-	// Developer
-	execResponse = execSync( 'wp plugin install developer --activate', true);
-	wpcli.execOutput( execResponse.stdout, execResponse.stderr );
-	util.puts( options.spacer );
+			if ( activate ) {
+				pluginInstall = pluginInstall + ' --activate';
+			} // if()
+			execResponse = execSync( pluginInstall, true);
+			wpcli.execOutput( execResponse.stdout, execResponse.stderr );
+			util.puts( options.spacer );
+		} // if()
+	});
 
 	wpcli.callback( callback );
 };

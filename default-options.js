@@ -39,7 +39,41 @@ var options = {
 		gitRemote  : undefined
 	},
 	plugins:{
-		install : {},
+		installPlugins: true,
+		install : {
+			widgetSettingsImportexport: {
+				slug     : 'widget-settings-importexport',
+				activate : true
+			},
+			regenerateThumbnails: {
+				slug     : 'regenerate-thumbnails',
+				activate : true
+			},
+			wordpressDatabaseReset: {
+				slug     : 'wordpress-database-reset',
+				activate : true
+			},
+			debugBar: {
+				slug     : 'debug-bar',
+				activate : true
+			},
+			debugBarConsole: {
+				slug     : 'debug-bar-console',
+				activate : true
+			},
+			themeCheck: {
+				slug     : 'theme-check',
+				activate : true
+			},
+			wordpressImporter: {
+				slug     : 'wordpress-importer',
+				activate : true
+			},
+			developer: {
+				slug     : 'developer',
+				activate : true
+			}
+		},
 		uninstall : {
 			hello: true,
 			akismet : true

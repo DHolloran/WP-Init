@@ -41,6 +41,8 @@ options.values = function() {
 			github            = options.githubTheme,
 			grunt             = options.grunt,
 			packageJSON       = options.grunt.packageJSON,
+			plugins           = options.plugins,
+			pluginsUninstall  = plugins.uninstall,
 			nl                = "\n",
 			msg               = '',
 			useGrunt          = ( grunt.useGrunt ) ? 'Y' : 'N',
@@ -73,6 +75,11 @@ options.values = function() {
 		' - Theme Repository: ' + github.gitRemote  + nl;
 	} // if()
 	msg = msg + options.spacer + nl +
+	'Install Plugins: ' + plugins.installPlugins + nl +
+	options.spacer + nl +
+	'Uninstall Hello Dolly: ' + pluginsUninstall.hello + nl +
+	'Uninstall Akismet: ' + pluginsUninstall.akismet + nl +
+	options.spacer + nl +
 	'- Admin User Name: ' + admin.name + nl +
 	'- Admin Password: ' + admin.password + nl +
 	'- Admin Email :' + admin.email + nl +
@@ -264,7 +271,7 @@ options.theme.callback = function( callback ) {
 
 									// Theme License
 									// options.ask( 'Theme License', theme.license, function( option ) {
-									// 	if ( option !== '' ) { theme.license = option; }
+									//	if ( option !== '' ) { theme.license = option; }
 									// }); // options.ask('Theme License')
 								}); // options.ask('Theme Author URI')
 							}); // options.ask('Theme Author')
